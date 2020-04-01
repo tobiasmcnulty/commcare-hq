@@ -2333,8 +2333,9 @@ class BillingRecordBase(models.Model):
     date_created = models.DateTimeField(auto_now_add=True, db_index=True)
     emailed_to_list = ArrayField(models.EmailField(), default=list)
     skipped_email = models.BooleanField(default=False)
-    pdf_data_id = models.CharField(max_length=48)
+    pdf_data_id = models.CharField(max_length=48)   # TODO: migrate in command in PR1, then delete in PR3
     last_modified = models.DateTimeField(auto_now=True)
+    #invoice_pdf = models.ForeignKey(InvoicePdf, on_delete=models.CASCADE)  TODO run makemigrations in PR1
 
     INVOICE_HTML_TEMPLATE = 'accounting/email/invoice.html'
     INVOICE_TEXT_TEMPLATE = 'accounting/email/invoice.txt'
@@ -2342,12 +2343,14 @@ class BillingRecordBase(models.Model):
     class Meta(object):
         abstract = True
 
-    _pdf = None
+    _pdf = None     # TODO: delete in PR3
 
     @property
-    def pdf(self):
+    def pdf(self):  # TODO: PR3: deprecate this property altogether
+        if self.invoice_pdf:
+            return self.invoice_pdf
         if self._pdf is None:
-            return InvoicePdf.objects.get(id=self.pdf_data_id)   # TODO: migrate pdf_data_id, in populate command
+            return InvoicePdf.get(self.pdf_data_id)
         return self._pdf
 
     @property
@@ -2367,8 +2370,8 @@ class BillingRecordBase(models.Model):
         record = cls(invoice=invoice)
         invoice_pdf = InvoicePdf()
         invoice_pdf.generate_pdf(record.invoice)
-        record.pdf_data_id = invoice_pdf.id
-        record._pdf = invoice_pdf
+        record.pdf_data_id = invoice_pdf.id     # TODO: delete
+        record.invoice_pdf = invoice_pdf
         record.save()
         return record
 
